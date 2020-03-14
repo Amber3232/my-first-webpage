@@ -1,156 +1,232 @@
 <html lang="en">
 
-  <head>
-    <meta charset="utf-8">
-    <title>Population Density</title>
-    <link href='https://fonts.googleapis.com/css?family=Roboto+Condensed' rel='stylesheet' type='text/css'>
-    <link href='https://fonts.googleapis.com/css?family=Lora' rel='stylesheet' type='text/css'>
-    <style>
-      table {
-        border-spacing: 0px;
-        font-family: 'Roboto Condensed', serif;
-        font-size: 90%;
-        margin-top: 50px;
-		margin: 0 auto;
-      }
-      th {
-        cursor: pointer;
-      }
+    <head>
+        <meta charset="utf-8">
+        <meta name=viewport content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1">
+        <title>Population Density</title>
+        <style>
+            body {
+                padding: 0;
+				margin: 0 auto;
+				width: 1000;
+				background-color: white;
+            }
 
-      th, td {
-        padding: 2px 10px 2px 5px;
-        text-align: left;
-        border-top: 1px solid #E3E5E6;
-      }
-      .intro{
-        margin-top: 30px;
-      }
+            h2 {
+                font-size: 28px;
+				text-align: center;
+				margin-top: 20px;
+            }
 
-      .wrapper{
-        width: 940px;
-        margin: 40px auto 40px auto;
-      }
+            p {
+                font-size: 18px;
+                margin: 10px 0 0 0;
+            }
 
-      h1 {
-        font-family: 'Lora', serif;
-      }
+            svg {
+				background-color: white;
+			}
+			#intro{
+				font-size: 18px;
+				text-indent: 36px;
+				text-align: center;
+				margin-bottom: 20px;
+			}
+			.source{
+				color: rgba(122,122,122,1.00);
+				font-size: 15px;
+			}
+			.credit{
+				color: rgba(122,122,122,1.00);
+				margin-bottom: 10px;
+				font-size: 15px;
+			}
+            .axis path,
+            .axis line {
+              fill: none;
+              stroke: #000;
+              shape-rendering: crispEdges;
+            }
+			.tooltip {
+                position: absolute;
+                z-index: 10;
+				background-color: white;
+				color: black;
+				text-indent: 2px;
+			    padding: 1px;
+				margin: 2px;
+				border: rgb(255,97,97) 1px solid;
+            }
+			path {
+				stroke: #fff;
+				stroke-width: .5px;
 
-      p {
-        font-family: 'Lora', serif;
-        font-size: 90%;
-      }
-      #source{
-        width: 500px;
-      }
-      #name{
-        width: 500px;
-        
-      }
-    </style>
-  </head>
+			}
 
-  <body>
-    <div class='wrapper'>
-      <h1>Population Density</h1>
-      <div class="intro">
-        <p>Population density (in agriculture: standing stock and standing crop) is a measurement of population per unit area or unit volume; it is a quantity of type number density. It is frequently applied to living organisms, and most of the time to humans. It is a key geographical term. In simple terms population density refers to the number of people living in an area per kilometer square.</p>
-        
-      </div>
-      <div id="source">
-        <p>Source: United Nations Population Division, New York, World Population Prospects: The 2017 Revision, last accessed June 2017.</p>
-        
-      </div>
-      <div id="name"><p>Produced by: Li Jiaqi</p></div>
-      <div id="table"></div>
-    </div><!-- warpper -->
-  </body>
+			.legendLinear text {
+			    font-size: 9px;
+			}
 
-  <!-- lib -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.1.0/d3.js"></script>
-  <script type="text/javascript" src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
+        </style>
+    </head>
+
+    <body>
+
+        <h2>国家人口密度</h2>
+   		<p id="intro">本图展现了2018年世界各国人口密度总体情况，部分国家数据缺失。</p> 
+       <div id="container">
+        <p class="source">数据来源：联合国数据库</p>
+        <p class="credit">16数新 李嘉琪 201601133001</p>
+       </div> 
+		<div id="density"></div>
+
+    </body>
+
+    <!-- d3线上lib -->
+    <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/queue.v1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
 
 
-  <!-- js -->
-  <script type="application/javascript">
+    <!-- jquery线上lib -->
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
 
-    d3.csv("population_density.csv", function(error, theData){
-      if (error) throw error;
-      console.log(theData)
 
-      var matrix = [];
-      var allChange = [];
-      theData.forEach(function(d,i){
-            d.year2005 = +d.year2005;
-            d.year2010 = +d.year2010;
-            d.year2015 = +d.year2015;
-            d.year2018 = +d.year2018;
-            d.change = (d.year2018 - d.year2005).toFixed(2);
-            d.change = +d.change;
+    <script type="text/javascript">
 
-            matrix.push([d.Country_name, d.year2005, d.year2010, d.year2015, d.year2018, d.change]);
+		var width = 1000;
+		var height = 800;
 
-            allChange.push(d.change);
-      });
-      
-      matrix.sort(function(a,b){
-        return b[5] - a[5];
-      });
+		var svg = d3.select("#density")
+					.append("svg") 
+					.attr("width", width)
+					.attr("height", height);
+		
+		var tooltip = d3.select("body")
+                        .append("div")
+                        .attr("class", "tooltip");
 
-      var colorScale = d3.scaleLinear()
-          .domain(d3.extent(allChange))
-          .range(["rgba(150,213,255,0.2)", "rgba(150,213,255,1)"])
+		var density_g = svg.append("g");
 
-          var body = d3.select("body");
-          var table = body.append("table");
-          var tbody = table.append("tbody");
-          var tr = table.selectAll("tr")
-              .data(matrix)
-              .enter()
-              .append("tr")
-          var td = tr.selectAll("td")
-              .data(function(d){
-                return d;
-              })
-              .enter()
-              .append("td")
-              .style("background-color", function(d,i){
-                if (i === 5){
-                  return colorScale(d);
-                }else{
-					return 'rgba(174,216,255,0.1)';
+		var projection = d3.geoMercator()
+
+		var geoGenerator = d3.geoPath()
+			.projection(projection);
+
+		var colorScale = d3.scaleOrdinal(d3.schemeCategory20b);
+		var colorScale2 = d3.scaleQuantile().range(["#b6e0ff", "#99bfff", "#759cff", "#c4b2ff", "#edb2ff", "#ffdae9"]);
+
+		// we use queue because we have 2 data files to load.
+		queue()
+		    .defer(d3.json, "countries.geo.json")
+		    .defer(d3.csv, "population_density.csv", typeAndSet)
+		    .await(loaded);
+
+		var countryByName = d3.map();
+
+		function typeAndSet(d){
+			d.year2018 = +d.year2018;
+			countryByName.set(d.Country_name, d)
+			return d;
+		}
+
+		function getColor(d){
+			var country = countryByName.get(d.properties.name);
+			 console.log(country)
+
+			if(country){
+//				console.log(colorScale2(country.year2018))
+				return colorScale2(country.year2018);
+			}else if(d.properties.name!="Antarctica"){
+				return "#ccc";
+			}else{
+				return "#fff";
+			}
+		}
+
+		function loaded(error, density, gdp){
+			if(error) throw error;
+			
+			console.log(gdp);
+
+//			colorScale2.domain(d3.extent(gdp, function(g){
+//				return g.year2018;
+//			}))
+			colorScale2.domain([0, 10, 100, 1000, 20000])
+
+			projection.fitSize([1000, 800], density);
+
+			var density = density_g.selectAll("path")
+				.data(density.features);
+
+			density.enter()
+				.append("path")
+				.attr("d", geoGenerator)
+				// .attr("fill", function(d,i){ return colorScale(i); })
+				.attr("fill", function(d){ return getColor(d); })
+			    .on("mouseover", mouseoverFunc) 
+                .on("mousemove", mousemoveFunc) 
+                .on("mouseout", mouseoutFunc); 
+
+			// The d3-legend component is called here:
+
+			var linear = colorScale2;
+
+			svg.append("g")
+				.attr("class", "legendLinear")
+				.attr("transform", "translate(20,20)");
+
+			var legendLinear = d3.legendColor()
+				.shapeWidth(30)
+				.orient("vertical")
+				.labelFormat(d3.format(".0f"))
+				.scale(linear);
+
+			svg.select(".legendLinear")
+				.call(legendLinear);
+
+		}
+		function mouseoverFunc(d) {
+			
+			if (d.properties.name!="Antarctica"){
+				d3.select(this)
+				.transition()
+				.duration(100)
+				.style("stroke-width", 1.5)
+			    .style("stroke", "white"); 
+				
+				if (countryByName.get(d.properties.name)){
+				tooltip
+                .style("display", null) 
+                .text( d.properties.name + "的人口密度是" + countryByName.get(d.properties.name)["year2018"]);
+				}else{
+				tooltip
+				.style("display", null)
+				.text( d.properties.name + "数据缺失");
 				}
-              })
-              .text(function(d){
-                return d;
-              })
-              .style('color', function(d,i){
-                if(i === 0){
-                  return 'black';
-                }
-              });
-          var header = table.append("thead").append("tr");
-          var headerObjs = [
-            { label: "Country Name", sort_type: "string" },
-            { label: "Year2005", sort_type: "int" },
-            { label: "Year2010", sort_type: "int" },
-            { label: "Year2015", sort_type: "int" },
-            { label: "Year2018", sort_type: "int" },
-            { label: "Change", sort_type: "int" },
-            ];
+			}
+           
+				
+        }
 
-          header
-            .selectAll("th")
-            .data(headerObjs)
-            .enter()
-            .append("th")
-            .attr("data-sort", function(d){
-              return d.sort_type;
-            })
-            .text(function(d){
-              return d.label;
-            })
-            .style('color', 'black');
+        	function mousemoveFunc(d) {
+            tooltip
+                .style("top", (d3.event.pageY + 10) + "px" )
+                .style("left", (d3.event.pageX + 15) + "px");
+        }
 
-    });
-  </script>
+			function mouseoutFunc(d) {
+				if (d.properties.name!="Antarctica"){
+				d3.select(this)
+				.transition()
+				.duration(100)
+				.style("stroke-width", 1)
+			    .style("stroke", "white"); 
+            tooltip.style("display", "none");
+			d3.select(this) }
+
+        }
+
+    </script>
+
 </html>
